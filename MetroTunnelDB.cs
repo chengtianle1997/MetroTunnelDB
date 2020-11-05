@@ -3,6 +3,11 @@ using MySql.Data;
 using MySql.Data.MySqlClient;
 //using System.Data;
 using System.Collections.Generic;
+using MySqlX.XDevAPI.CRUD;
+using FileIO;
+using System.ComponentModel.DataAnnotations.Schema;
+using FileIO_UI;
+using Newtonsoft.Json;
 
 namespace libMetroTunnelDB
 {
@@ -20,7 +25,7 @@ namespace libMetroTunnelDB
         public bool? IsValid;
         public int? LineID;
 
-        public Line(String _LineNumber, String _LineName, float _TotalMileage, DateTime _CreateTime, bool? _IsValid=true, int? _LineID=null)
+        public Line(String _LineNumber, String _LineName, float _TotalMileage, DateTime _CreateTime, bool? _IsValid = true, int? _LineID = null)
         {
             LineNumber = _LineNumber;
             LineName = _LineName;
@@ -56,12 +61,12 @@ namespace libMetroTunnelDB
         public int LineID;
         public DateTime DetectTime;
         public String DeviceID;
-        public int Length;
-        public int Start_Loc;
-        public int Stop_Loc;
+        public Single Length;
+        public Single Start_Loc;
+        public Single Stop_Loc;
         public int? RecordID;
 
-        public DetectRecord(int _LineID, DateTime _DetectTime, String _DeviceID, int _Length, int _Start_Loc, int _Stop_Loc, int? _RecordID = null)
+        public DetectRecord(int _LineID, DateTime _DetectTime, String _DeviceID, Single _Length, Single _Start_Loc, Single _Stop_Loc, int? _RecordID = null)
         {
             LineID = _LineID;
             DetectTime = _DetectTime;
@@ -76,7 +81,7 @@ namespace libMetroTunnelDB
     public class DataOverview
     {
         public int RecordID;
-        public float Distance;
+        public double Distance;
         public float LongAxis;
         public float ShortAxis;
         public float HorizontalAxis;
@@ -84,7 +89,7 @@ namespace libMetroTunnelDB
         public bool Constriction;
         public bool Crack;
 
-        public DataOverview(int _RecordID, float _Distance, float _LongAxis, float _ShortAxis, float _HorizontalAxis, float _Rotation, bool _Constriction, bool _Crack)
+        public DataOverview(int _RecordID, double _Distance, float _LongAxis, float _ShortAxis, float _HorizontalAxis, float _Rotation, bool _Constriction, bool _Crack)
         {
             RecordID = _RecordID;
             Distance = _Distance;
@@ -96,9 +101,9 @@ namespace libMetroTunnelDB
             Crack = _Crack;
         }
     }
-    
+
     // Size: 4K * sizeof(float)
-    public class DataRaw: IGetTimeStamp
+    public class DataRaw : IGetTimeStamp
     {
         public int RecordID;
         public int TimeStamp;
@@ -117,9 +122,49 @@ namespace libMetroTunnelDB
             Array.Copy(_y, 0, y, 0, 2048);
         }
 
+        public DataRaw(int _RecordID, int _Timestamp, int _CameraID)
+        {
+            RecordID = _RecordID;
+            TimeStamp = _Timestamp;
+            CameraID = _CameraID;
+            x = new float[2048];
+            y = new float[2048];
+        }
+
         public ref int GetTimeStamp()
         {
             return ref TimeStamp;
+        }
+    }
+
+    public class DataConv_SingleCam
+    {
+        public int RecordID;
+        public int Timestamp;
+        public int CameraID;
+        public float[] s;
+        public float[] a;
+
+        public const int floatArrLength = 2048;
+
+        public DataConv_SingleCam(int _RecordID, int _Timestamp, int _CameraID, float[] _s, float[] _a)
+        {
+            RecordID = _RecordID;
+            Timestamp = _Timestamp;
+            CameraID = _CameraID;
+            s = new float[floatArrLength];
+            a = new float[floatArrLength];
+            Array.Copy(_s, 0, s, 0, floatArrLength);
+            Array.Copy(_a, 0, a, 0, floatArrLength);
+        }
+
+        public DataConv_SingleCam(int _RecordID, int _Timestamp, int _CameraID)
+        {
+            RecordID = _RecordID;
+            Timestamp = _Timestamp;
+            CameraID = _CameraID;
+            s = new float[floatArrLength];
+            a = new float[floatArrLength];
         }
     }
 
@@ -150,7 +195,7 @@ namespace libMetroTunnelDB
             a = new float[floatArrLength];
         }
     }
-    
+
     public class DataDisp
     {
         public int RecordID;
@@ -165,7 +210,7 @@ namespace libMetroTunnelDB
         }
     }
 
-    public class TandD: IGetTimeStamp
+    public class TandD : IGetTimeStamp
     {
         public int RecordID;
         public int TimeStamp;
@@ -198,6 +243,14 @@ namespace libMetroTunnelDB
             CameraID = _CameraID;
             FileUrl = _FileUrl;
         }
+
+        public ImageRaw(int _RecordID, int _TimeStamp, int _CameraID)
+        {
+            RecordID = _RecordID;
+            TimeStamp = _TimeStamp;
+            CameraID = _CameraID;
+            FileUrl = "";
+        }
     }
 
     public class ImageDisp
@@ -206,13 +259,24 @@ namespace libMetroTunnelDB
         public float Distance;
         public String[] FileUrl;
 
+        public const int StringArrLength = 8;
+
         public ImageDisp(int _RecordID, float _Distance, String[] _FileUrl)
         {
             RecordID = _RecordID;
             Distance = _Distance;
-            FileUrl = new String[8];
-            for (int i = 0; i < 8; i++)
+            FileUrl = new String[StringArrLength];
+            for (int i = 0; i < StringArrLength; i++)
                 FileUrl[i] = _FileUrl[i];
+        }
+
+        public ImageDisp(int _RecordID, float _Distance)
+        {
+            RecordID = _RecordID;
+            Distance = _Distance;
+            FileUrl = new string[StringArrLength];
+            for (int i = 0; i < StringArrLength; i++)
+                FileUrl[i] = "";
         }
     }
 
@@ -256,6 +320,35 @@ namespace libMetroTunnelDB
         }
     }
 
+    public class DisplayPCLJson
+    {
+        public String dpNo { set; get; }
+        public List<String> value { set; get; }
+        public itemSyleJson itemStyle { set; get; }
+
+        public DisplayPCLJson(int _dpNo, float _x, float _y, float _z, bool _isAbnormal)
+        {
+            dpNo = _dpNo.ToString();
+            value = new List<String>();
+            value.Add(_x.ToString());
+            value.Add(_y.ToString());
+            value.Add(_z.ToString());
+            itemStyle = new itemSyleJson(_isAbnormal);
+        }
+    }
+
+    public class itemSyleJson
+    {
+        public String color { set; get; }
+        public itemSyleJson(bool _isAbnormal)
+        {
+            if (_isAbnormal)
+                color = "red";
+            else
+                color = "blue";
+        }
+    }
+
     public class MetroTunnelDB
     {
         // MySQL connector.
@@ -265,10 +358,12 @@ namespace libMetroTunnelDB
         private readonly int milisec_hour = 60 * 60 * 1000;
         private readonly int milisec_day = 24 * 60 * 60 * 1000;
 
+        private int camera_num_max = 8;
+
 
         // ---------------------------------------------------------------
         // Build connector and test connection.
-        public MetroTunnelDB(String server = "localhost", int port = 3306, String user = "root", String passwd = "")
+        public MetroTunnelDB(String server = "localhost", int port = 3306, String user = "root", String passwd = "voies2020")
         {
             String connStr = String.Format("server={0}; user={1}; database=metrodb; port={2}; password={3}", server, user, port, passwd);
             ro = new Random();
@@ -489,7 +584,7 @@ namespace libMetroTunnelDB
             int ret = DoInsertQuery(queryStr, entry, WriteDetectRecord);
             return ret;
         }
-        
+
         public int InsertIntoDataOverview(in DataOverview entry)
         {
             String queryStr;
@@ -525,7 +620,7 @@ namespace libMetroTunnelDB
             int ret = DoBatchInsertQuery(queryStr, arr, WriteDataRaw);
             return ret;
         }
-        
+
         public int InsertIntoDataConv(in DataConv entry)
         {
             String queryStr;
@@ -648,6 +743,23 @@ namespace libMetroTunnelDB
         }
 
         // ---------------------------------------------------------------
+        // Deletion engine
+        protected void DoDelete(String deleteStr)
+        {
+            MySqlCommand cmd = new MySqlCommand(deleteStr, conn);
+            conn.Open();
+            try
+            {
+                cmd.ExecuteNonQuery();
+            }
+            finally
+            {
+                conn.Close();
+            }
+            
+        }
+
+        // ---------------------------------------------------------------
         // Implementations of data readers.
 
         protected Line ReadLine(MySqlDataReader reader)
@@ -685,12 +797,30 @@ namespace libMetroTunnelDB
                 reader.GetInt32("LineID"),
                 reader.GetDateTime("DetectTime"),
                 reader.GetString("DeviceID"),
-                reader.GetInt32("Length"),
-                reader.GetInt32("Start_Loc"),
-                reader.GetInt32("Stop_Loc"),
+                reader.GetFloat("Length"),
+                reader.GetFloat("Start_Loc"),
+                reader.GetFloat("Stop_Loc"),
                 reader.GetInt32("RecordID")
             );
             return entry;
+        }
+
+        protected int ReadMaxDetectRecordID(MySqlDataReader reader)
+        {
+            int RecordID = reader.GetInt32("MAX(RecordID)");
+            return RecordID;
+        }
+
+        protected DateTime ReadMinDetectRecordTime(MySqlDataReader reader)
+        {
+            DateTime CreateTime = reader.GetDateTime("MIN(DetectTime)");
+            return CreateTime;
+        }
+
+        protected DateTime ReadMaxDetectRecordTime(MySqlDataReader reader)
+        {
+            DateTime CreateTime = reader.GetDateTime("MAX(DetectTime)");
+            return CreateTime;
         }
 
         protected DataOverview ReadDataOverview(MySqlDataReader reader)
@@ -698,7 +828,7 @@ namespace libMetroTunnelDB
             DataOverview entry = new DataOverview
             (
                 reader.GetInt32("RecordID"),
-                reader.GetFloat("Distance"),
+                reader.GetDouble("Distance"),
                 reader.GetFloat("LongAxis"),
                 reader.GetFloat("ShortAxis"),
                 reader.GetFloat("HorizontalAxis"),
@@ -793,6 +923,14 @@ namespace libMetroTunnelDB
         // ---------------------------------------------------------------
         // Implementations of query fuctions.
 
+        public void QueryLine(ref List<Line> e, String LineNumber)
+        {
+            String queryStr = String.Format("SELECT * FROM Line WHERE LineNumber={0}", LineNumber);
+            List<Line> arr = new List<Line>();
+            DoQuery(queryStr, ref arr, ReadLine);
+            e = arr;
+        }
+
         public void QueryLine(ref Line e, int LineID)
         {
             String queryStr = String.Format("SELECT * FROM Line WHERE LineID={0}", LineID);
@@ -801,12 +939,81 @@ namespace libMetroTunnelDB
             e = arr[0];
         }
 
-        public void QueryDetectDevice(ref DetectDevice e, int DetectDeviceID)
+        public void QueryLine(ref List<Line> e)
+        {
+            String queryStr = "SELECT * FROM Line";
+            List<Line> arr = new List<Line>();
+            DoQuery(queryStr, ref arr, ReadLine);
+            e = arr;
+        }
+
+        public void DeleteLine(String LineNumber)
+        {
+            String deleteStr = String.Format("DELETE FROM Line WHERE LineNumber={0}", LineNumber);
+            DoDelete(deleteStr);
+        }
+
+        public void QueryDetectDevice(ref List<DetectDevice> e, String DetectDeviceNumber)
+        {
+            String queryStr = String.Format("SELECT * FROM DetectDevice WHERE DetectDeviceNumber={0}", DetectDeviceNumber);
+            List<DetectDevice> arr = new List<DetectDevice>();
+            DoQuery(queryStr, ref arr, ReadDetectDevice);
+            e = arr;
+        }
+
+        public void QueryDetectDevice(ref DetectDevice e, String DetectDeviceID)
         {
             String queryStr = String.Format("SELECT * FROM DetectDevice WHERE DetectDeviceID={0}", DetectDeviceID);
             List<DetectDevice> arr = new List<DetectDevice>();
             DoQuery(queryStr, ref arr, ReadDetectDevice);
             e = arr[0];
+        }
+
+        public void QueryDetectDevice(ref List<DetectDevice> e)
+        {
+            String queryStr = "SELECT * FROM DetectDevice";
+            List<DetectDevice> arr = new List<DetectDevice>();
+            DoQuery(queryStr, ref arr, ReadDetectDevice);
+            e = arr;
+        }
+
+        public void DeleteDetectDevice(String DetectDeviceNumber)
+        {
+            String deleteStr = String.Format("DELETE FROM DetectDevice WHERE DetectDeviceNumber={0}", DetectDeviceNumber);
+            DoDelete(deleteStr);
+        }
+
+        public void QueryDetectRecord(ref List<DetectRecord> e)
+        {
+            String queryStr = "SELECT * FROM DetectRecord";
+            List<DetectRecord> arr = new List<DetectRecord>();
+            DoQuery(queryStr, ref arr, ReadDetectRecord);
+            e = arr;
+        }
+
+        public void QueryDetectRecord(ref List<DetectRecord> e, int LineID)
+        {
+            String queryStr = String.Format("SELECT * FROM DetectRecord WHERE LineID={0}", LineID);
+            List<DetectRecord> arr = new List<DetectRecord>();
+            DoQuery(queryStr, ref arr, ReadDetectRecord);
+            e = arr;
+        }
+
+        public void QueryDetectRecord(ref List<DetectRecord> e, DateTime start_time, DateTime stop_time)
+        {
+            String queryStr = String.Format("SELECT * FROM DetectRecord WHERE DetectTime>=\"{0}\" AND DetectTime<=\"{1}\"", start_time.ToString(), stop_time.ToString());
+            List<DetectRecord> arr = new List<DetectRecord>();
+            DoQuery(queryStr, ref arr, ReadDetectRecord);
+            e = arr;
+        }
+
+        public void QueryDetectRecord(ref List<DetectRecord> e, int LineID, DateTime start_time, DateTime stop_time)
+        {
+            String queryStr = String.Format("SELECT * FROM DetectRecord WHERE LineID={0} AND DetectTime>=\"{1}\" AND DetectTime<=\"{2}\"", 
+                LineID, start_time.ToString(), stop_time.ToString());
+            List<DetectRecord> arr = new List<DetectRecord>();
+            DoQuery(queryStr, ref arr, ReadDetectRecord);
+            e = arr;
         }
 
         public void QueryDetectRecord(ref DetectRecord e, int RecordID)
@@ -815,12 +1022,81 @@ namespace libMetroTunnelDB
             List<DetectRecord> arr = new List<DetectRecord>();
             DoQuery(queryStr, ref arr, ReadDetectRecord);
             e = arr[0];
+        }   
+
+        public void QueryDetectRecord(ref DetectRecord e, String CreateTime)
+        {
+            String queryStr = String.Format("SELECT * FROM DetectRecord WHERE DetectTime=\"{0}\"", CreateTime);
+            List<DetectRecord> arr = new List<DetectRecord>();
+            DoQuery(queryStr, ref arr, ReadDetectRecord);
+            if (arr.Count < 1)
+            {
+                e = null;
+                return;
+            }
+            e = arr[0];
+        }
+
+        public void GetMaxDetectRecordID(ref int record_id)
+        {
+            String queryStr = "SELECT MAX(RecordID) FROM DetectRecord";
+            List<int> record_ids = new List<int>();
+            DoQuery(queryStr, ref record_ids, ReadMaxDetectRecordID);
+            record_id = record_ids[0];
+        }
+
+        public void GetMaxMinDetectRecordTime(ref DateTime start_time, ref DateTime stop_time)
+        {
+            String queryStrMin = "SELECT MIN(DetectTime) FROM DetectRecord";
+            String queryStrMax = "SELECT MAX(DetectTime) FROM DetectRecord";
+            List<DateTime> dateTimes_min = new List<DateTime>();
+            List<DateTime> dateTimes_max = new List<DateTime>();
+            DoQuery(queryStrMin, ref dateTimes_min, ReadMinDetectRecordTime);
+            DoQuery(queryStrMax, ref dateTimes_max, ReadMaxDetectRecordTime);
+            start_time = dateTimes_min[0];
+            stop_time = dateTimes_max[0];
+        }
+
+        public void DeleteDetectRecord(int record_id)
+        {
+            String deleteStr = "DELETE FROM {0} WHERE RecordID={1}";
+            // Delete DataRaw
+            String deleteDataRawStr = String.Format(deleteStr, "DataRaw", record_id);
+            DoDelete(deleteDataRawStr);
+            // Delete DataConv
+            String deleteDataConvStr = String.Format(deleteStr, "DataConv", record_id);
+            DoDelete(deleteDataConvStr);
+            // Delete DataDisp
+            String deleteDataDispStr = String.Format(deleteStr, "DataDisp", record_id);
+            DoDelete(deleteDataDispStr);
+            // Delete DataOverview
+            String deleteDataOverviewStr = String.Format(deleteStr, "DataOverview", record_id);
+            DoDelete(deleteDataOverviewStr);
+            // Delete ImageRaw
+            String deleteImageRawStr = String.Format(deleteStr, "ImageRaw", record_id);
+            DoDelete(deleteImageRawStr);
+            // Delete ImageDisp
+            String deleteImageDispStr = String.Format(deleteStr, "ImageDisp", record_id);
+            DoDelete(deleteImageDispStr);
+            // Delete TandD
+            String deleteTandDStr = String.Format(deleteStr, "TandD", record_id);
+            DoDelete(deleteTandDStr);
+            // Delete DetectRecord
+            String deleteDetectRecordStr = String.Format(deleteStr, "DetectRecord", record_id);
+            DoDelete(deleteDetectRecordStr);
         }
 
         public void QueryDataOverview(ref List<DataOverview> arr, int RecordID, float min_Distance = 0, float max_Distance = float.MaxValue)
         {
             String formatStr = "SELECT * FROM DataOverview WHERE RecordID={0} AND Distance>={1} AND Distance<={2}";
             String queryStr = String.Format(formatStr, RecordID, min_Distance, max_Distance);
+            DoQuery(queryStr, ref arr, ReadDataOverview);
+        }
+
+        public void QueryDataOverview(ref List<DataOverview> arr, int RecordID, int QueryStart, int QueryNum)
+        {
+            String formatStr = "SELECT * FROM DataOverview WHERE RecordID={0} LIMIT {1},{2}";
+            String queryStr = String.Format(formatStr, RecordID, QueryStart, QueryNum);
             DoQuery(queryStr, ref arr, ReadDataOverview);
         }
 
@@ -857,6 +1133,14 @@ namespace libMetroTunnelDB
             String queryStr = String.Format(formatStr, min_RecordID, max_RecordID, min_Distance, max_Distance);
             DoQuery(queryStr, ref arr, ReadDataConv);
         }
+
+        public void QueryDataConv(ref List<DataConv> arr, int RecordID, int QueryFrom, int maxQuery, float min_Distance = 0, float max_Distance = float.MaxValue)
+        {
+            String formatStr = "SELECT * FROM DataConv WHERE RecordID={0} AND Distance>={1} AND Distance<={2} LIMIT {3},{4}";
+            String queryStr = String.Format(formatStr, RecordID, min_Distance, max_Distance, QueryFrom, maxQuery);
+            DoQuery(queryStr, ref arr, ReadDataConv);
+        }
+
 
         public void QueryDataDisp(ref List<DataDisp> arr, int RecordID, float min_Distance = 0, float max_Distance = float.MaxValue)
         {
@@ -907,12 +1191,12 @@ namespace libMetroTunnelDB
             DoQuery(queryStr, ref arr, ReadImageDisp);
         }
 
-        public void QueryImageDisp(ref List<ImageDisp> arr, int min_RecordID, int max_RecordID, float min_Distance = 0, float max_Distance = float.MaxValue)
-        {
-            String formatStr = "SELECT * FROM ImageDisp WHERE RecordID>={0} AND RecordID<={1} AND Distance>={2} AND Distance<={3}";
-            String queryStr = String.Format(formatStr, min_RecordID, max_RecordID, min_Distance, max_Distance);
-            DoQuery(queryStr, ref arr, ReadImageDisp);
-        }
+        //public void QueryImageDisp(ref List<ImageDisp> arr, int min_RecordID, int max_RecordID, float min_Distance = 0, float max_Distance = float.MaxValue)
+        //{
+        //    String formatStr = "SELECT * FROM ImageDisp WHERE RecordID>={0} AND RecordID<={1} AND Distance>={2} AND Distance<={3}";
+        //    String queryStr = String.Format(formatStr, min_RecordID, max_RecordID, min_Distance, max_Distance);
+        //    DoQuery(queryStr, ref arr, ReadImageDisp);
+        //}
 
         public String SearchImageUrl(int RecordID, int TimeStamp, int CameraID, int min_TimeStamp = 0, int max_TimeStamp = int.MaxValue)
         {
@@ -934,6 +1218,298 @@ namespace libMetroTunnelDB
 
             return arr[best_index].FileUrl;
         }
+
+        // --------------------------------------------------------------- 2020/10/20 updated
+        // Generate DataConv from DataRaw (merge data from 8 cameras
+        
+        // Get alive camera index
+        public void GetAliveCam(int record_id, ref List<int> cam_alive)
+        {
+            int max_record_num = 10;
+            String formatStr = "SELECT * FROM DataRaw WHERE RecordID={0} AND CameraID={1} LIMIT 0,{2}";
+            for (int i = 1; i <= camera_num_max; i++)
+            {
+                String queryStr = String.Format(formatStr, record_id, i, max_record_num);
+                List<DataRaw> arr = new List<DataRaw>();
+                DoQuery(queryStr, ref arr, ReadDataRaw);
+                if(arr.Count > max_record_num - 1)
+                {
+                    cam_alive.Add(i);
+                }
+            }
+        }
+
+        // Get the interval time between two frames
+        public int GetFrameInterval(int record_id, int camera_id)
+        {
+            int max_record_num = 10;
+            String formatStr = "SELECT * FROM DataRaw WHERE RecordID={0} AND CameraID={1} LIMIT 0,{2}";
+            String queryStr = String.Format(formatStr, record_id, camera_id, max_record_num);
+            List<DataRaw> arr = new List<DataRaw>();
+            DoQuery(queryStr, ref arr, ReadDataRaw);
+            if (arr.Count < max_record_num)
+            {
+                return 0;
+            }
+            int interval_sum = 0;
+            int interval_count = 0;
+            for (int i = 1; i < arr.Count; i++)
+            {
+                int int_seq = arr[i].TimeStamp - arr[i - 1].TimeStamp;
+                if(int_seq > 0)
+                {
+                    interval_sum += int_seq;
+                    interval_count++;
+                }           
+            }
+            int interval = interval_sum / interval_count;
+            return interval;
+        }
+
+        // Merge DataRaw from 8 cameras
+        public void ProcessDataRaw(int record_id, MainWindow mw)
+        {
+            // Get alive camera index
+            List<int> cam_alive = new List<int>();
+            GetAliveCam(record_id, ref cam_alive);
+
+            // Get frame interval
+            int interval = GetFrameInterval(record_id, cam_alive[0]);
+            if (interval == 0)
+                return;
+
+            // Basic Param
+            int max_int = Convert.ToInt32(interval * 0.3);
+            int query_max = 5000;
+            int query_count = 0;
+            bool query_exit = false;
+            String formatStr = "SELECT * FROM DataRaw WHERE RecordID={0} AND CameraID={1} AND TimeStamp>={2} AND TimeStamp<={3}";
+            String formatStrMain = "SELECT * FROM DataRaw WHERE RecordID={0} AND CameraID={1} LIMIT {2},{3}";
+            int cam_base = cam_alive[0];
+            int MillisecondsMax = 24 * 3600 * 1000;
+            int json_cut = 10;
+            
+            while(!query_exit)
+            {
+                // Query cam_base
+                List<DataRaw> base_raw = new List<DataRaw>();
+                String queryStrMain = String.Format(formatStrMain, record_id, cam_base, query_max * query_count, query_max);
+                query_count++;
+                DoQuery(queryStrMain, ref base_raw, ReadDataRaw);
+                if (base_raw.Count <= 0)
+                    break;
+                //Console.WriteLine("---Merging Group " + query_count + ": " + base_raw.Count +" lines.....\n");
+                mw.DebugWriteLine("合并数据分组 " + query_count + ": 总计" + base_raw.Count + "行...");
+                // Deal the query_max lines of DataRaw
+                for (int i = 0; i < base_raw.Count; i++)
+                {
+                    int time_base = base_raw[i].TimeStamp;
+                    List<DataRaw> line = new List<DataRaw>();
+                    List<DataConv> line_conv = new List<DataConv>();
+                    DataConv dataConv = new DataConv(record_id, Convert.ToSingle(time_base));
+                    // Save the data from base camera
+                    line.Add(base_raw[i]);
+                    // Query each camera
+                    for (int j = 1; j < cam_alive.Count; j++)
+                    {
+                        String queryStr = String.Format(formatStr, record_id, cam_alive[j], Math.Max(time_base - max_int, 0), Math.Min(time_base + max_int, MillisecondsMax));
+                        List<DataRaw> arr = new List<DataRaw>();
+                        DoQuery(queryStr, ref arr, ReadDataRaw);
+                        if (arr.Count < 1)
+                        {
+                            // Set all x and y to 0
+                            line.Add(new DataRaw(record_id, time_base, cam_alive[j]));
+                            continue;
+                        }
+                        if (arr.Count == 1)
+                        {
+                            line.Add(arr[0]);
+                            continue;
+                        }
+                        // Find the closest timestamp
+                        int closest_time_index = 0;
+                        for (int k = 1; k < arr.Count; k++)
+                        {
+                            if (Math.Abs(arr[k].TimeStamp - time_base) < Math.Abs(arr[closest_time_index].TimeStamp - time_base))
+                                closest_time_index = k;
+                        }
+                        // Save the closest timestamp
+                        line.Add(arr[closest_time_index]);
+                        
+                    }
+
+                    mw.DebugReWriteLine("合并数据分组 " + query_count + ": " + i + "/" + base_raw.Count + "...");
+                    mw.SubProcessReport(i + (query_count - 1) * query_max);
+                    //Console.Write("\r----->Merging..... " + i + "/" + base_raw.Count + " lines");
+
+                    // Convert x, y to s, a
+                    for (int j = 0; j < cam_alive.Count; j++)
+                    {
+                        // Set timestamp to base time
+                        line[j].TimeStamp = time_base;
+                        DataConv_SingleCam dataconv_single = new DataConv_SingleCam(record_id, time_base, line[j].TimeStamp);
+                        ModelHandler.ConvertRes(line[j], ref dataconv_single);
+                        Array.Copy(dataconv_single.s, 0, dataConv.s, 2048 * j, 2048);
+                        Array.Copy(dataconv_single.a, 0, dataConv.a, 2048 * j, 2048);
+                    }
+                    // Send to MySQL
+                    InsertIntoDataConv(dataConv);
+
+                    // DataOverview
+                    float LongAxis = 0, ShortAxis = 0, HorizontalAxis = 0, Rotation = 0;
+                    bool Constriction = false, Crack = false;
+                    DataOverview dataOverview = new DataOverview(record_id, dataConv.Distance, LongAxis, ShortAxis, HorizontalAxis, Rotation, Constriction, Crack);
+                    InsertIntoDataOverview(dataOverview);
+                    
+                    List<DisplayPCLJson> pcl_json_list = new List<DisplayPCLJson>();
+                    // Package Json
+                    for (int j = 0; j < 2048 * cam_alive.Count; j++)
+                    {
+                        if (j % json_cut == 0)
+                        {
+                            float a_rotate = (float)(270 * Math.PI / 180 - dataConv.a[i]);
+                            float x = dataConv.Distance;
+                            float y = (float)(dataConv.s[i] * Math.Cos(a_rotate));
+                            float z = (float)(dataConv.s[i] * Math.Sin(a_rotate));
+                            pcl_json_list.Add(new DisplayPCLJson((int)(dataConv.Distance), x, y, z, false));
+                        }
+                    }
+                    String pcl_json_str = JsonConvert.SerializeObject(pcl_json_list);
+                    DataDisp dataDisp = new DataDisp(record_id, dataConv.Distance, pcl_json_str);
+                    InsertIntoDataDisp(dataDisp);
+                }
+                mw.DebugReWriteLine("合并数据分组 " + query_count + ": 完成");
+                Console.WriteLine("\n");
+            }
+        }
+
+        // Get alive encode camera index
+        public void GetAliveCamEnc(int record_id, ref List<int> cam_alive)
+        {
+            int max_record_num = 10;
+            String formatStr = "SELECT * FROM ImageRaw WHERE RecordID={0} AND CameraID={1} LIMIT 0,{2}";
+            for(int i = 1; i <= camera_num_max; i++)
+            {
+                String queryStr = String.Format(formatStr, record_id, i, max_record_num);
+                List<ImageRaw> arr = new List<ImageRaw>();
+                DoQuery(queryStr, ref arr, ReadImageRaw);
+                if(arr.Count > max_record_num - 1)
+                {
+                    cam_alive.Add(i);
+                }
+            }
+        }
+
+        // Get the interval time between two encode frames
+        public int GetFrameIntervalEnc(int record_id, int camera_id)
+        {
+            int max_record_num = 10;
+            String formatStr = "SELECT * FROM ImageRaw WHERE RecordID={0} AND CameraID={1} LIMIT 0,{2}";
+            String queryStr = String.Format(formatStr, record_id, camera_id, max_record_num);
+            List<ImageRaw> arr = new List<ImageRaw>();
+            DoQuery(queryStr, ref arr, ReadImageRaw);
+            if(arr.Count < max_record_num)
+            {
+                return 0;
+            }
+            int interval_sum = 0;
+            int interval_count = 0;
+            for(int i = 1; i < arr.Count; i++)
+            {
+                int int_seq = arr[i].TimeStamp - arr[i - 1].TimeStamp;
+                if(int_seq > 0)
+                {
+                    interval_sum += int_seq;
+                    interval_count++;
+                }
+            }
+            int interval = interval_sum / interval_count;
+            return interval;
+        }
+
+        // Merge ImageRaw from 8 cameras
+        public void ProcessImageRaw(int record_id, MainWindow mw)
+        {
+            // Get alive camera index
+            List<int> cam_alive = new List<int>();
+            GetAliveCamEnc(record_id, ref cam_alive);
+
+            // Get frame interval
+            int interval = GetFrameInterval(record_id, cam_alive[0]);
+            if (interval == 0)
+                return;
+
+            // Basic Param
+            int max_int = Convert.ToInt32(interval * 0.3);
+            int query_max = 5000;
+            int query_count = 0;
+            bool query_exit = false;
+            String formatStr = "SELECT * FROM ImageRaw WHERE RecordID={0} AND CameraID={1} AND TimeStamp>={2} AND TimeStamp<={3}";
+            String formatStrMain = "SELECT * FROM ImageRaw WHERE RecordID={0} AND CameraID={1} LIMIT {2},{3}";
+            int cam_base = cam_alive[0];
+            int MillisecondMax = 24 * 3600 * 1000;
+
+            while(!query_exit)
+            {
+                // Query cam_base
+                List<ImageRaw> base_raw = new List<ImageRaw>();
+                String queryStrMain = String.Format(formatStrMain, record_id, cam_base, query_max * query_count, query_max);
+                query_count++;
+                DoQuery(queryStrMain, ref base_raw, ReadImageRaw);
+                if (base_raw.Count <= 0)
+                    break;
+                mw.DebugWriteLine("合并视频序列分组 " + query_count + ": 总计" + base_raw.Count + "行...");
+                for (int i = 0; i < base_raw.Count; i++)
+                {
+                    int time_base = base_raw[i].TimeStamp;
+                    List<ImageRaw> line = new List<ImageRaw>();
+                    //List<ImageDisp> line_conv = new List<ImageDisp>();
+                    ImageDisp imageDisp = new ImageDisp(record_id, Convert.ToSingle(time_base));
+                    // Save the data from base camera
+                    line.Add(base_raw[i]);
+                    // Query each camera
+                    for (int j = 1; j < cam_alive.Count; j++)
+                    {
+                        String queryStr = String.Format(formatStr, record_id, cam_alive[j], Math.Max(time_base - max_int, 0), Math.Min(time_base + max_int, MillisecondMax));
+                        List<ImageRaw> arr = new List<ImageRaw>();
+                        DoQuery(queryStr, ref arr, ReadImageRaw);
+                        if (arr.Count < 1)
+                        {
+                            line.Add(new ImageRaw(record_id, time_base, cam_alive[j]));
+                            continue;
+                        }
+                        if (arr.Count == 1)
+                        {
+                            line.Add(arr[0]);
+                            continue;
+                        }
+                        // Find the closest timestamp
+                        int close_time_index = 0;
+                        for (int k = 1; k < arr.Count; k++)
+                        {
+                            if (Math.Abs(arr[k].TimeStamp - time_base) < Math.Abs(arr[close_time_index].TimeStamp - time_base))
+                                close_time_index = k;
+                        }
+                        // Save the closest timestamp
+                        line.Add(arr[close_time_index]);
+                    }
+
+                    mw.DebugReWriteLine("合并视频序列分组 " + query_count + ": " + i + "/" + base_raw.Count + "...");
+                    mw.SubProcessReport(i + (query_count - 1) * query_max);
+
+                    // Save info and Send to MySQL
+                    for (int j = 0; j < cam_alive.Count; j++)
+                    {
+                        // FileUrl index start from 0: 0 - CAM1, 1 - CAM2, etc
+                        imageDisp.FileUrl[cam_alive[j] - 1] = line[j].FileUrl;
+                    }
+                    InsertIntoImageDisp(imageDisp);
+
+                }
+                mw.DebugReWriteLine("合并视频序列分组 " + query_count + ": 完成");
+            }
+        }
+
 
         // ---------------------------------------------------------------
         // Programming interfaces.
@@ -990,7 +1566,7 @@ namespace libMetroTunnelDB
         // Find a divider for detecting works last until the last day.
         // We sort all the timestamps, and if we find ts[i] < ts[i+1] and ts[i+1] - ts[i] > 2 hours,
         // we think it's a detection job started at night and ended after 24:00.
-        private int refineTimeStamps<T>(List<T> arr, int? dateDivision = null) where T: IGetTimeStamp
+        private int refineTimeStamps<T>(List<T> arr, int? dateDivision = null) where T : IGetTimeStamp
         {
             if (!dateDivision.HasValue)
             {
@@ -1058,7 +1634,7 @@ namespace libMetroTunnelDB
                 clustered_arr[i] = new List<DataRaw>();
                 clustered_fpath[i] = new List<String>();
             }
-                
+
 
             while (arr.Count != 0)
             {
@@ -1084,7 +1660,7 @@ namespace libMetroTunnelDB
                 // reference not found
                 if (target_ts == -1)
                     continue;
-                
+
                 // find best fit entries
                 for (int i = 0; i < arr.Count; i++)
                 {

@@ -38,7 +38,7 @@ CREATE TABLE DetectRecord(
 
 CREATE TABLE DataOverview(
     RecordID INT NOT NULL COMMENT '外键，记录编号',
-    Distance FLOAT NOT NULL COMMENT '里程位置(m)',
+    Distance DOUBLE NOT NULL COMMENT '里程位置(m)',
     LongAxis FLOAT NOT NULL COMMENT '长轴(mm)',
     ShortAxis FLOAT NOT NULL COMMENT '短轴(mm)',
     HorizontalAxis FLOAT NOT NULL COMMENT '水平轴(mm)',
