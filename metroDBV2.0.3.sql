@@ -75,7 +75,7 @@ CREATE TABLE DataConv(
 
 CREATE TABLE DataDisp(
     RecordID INT NOT NULL COMMENT '外键，记录编号',
-    Distance FLOAT NOT NULL COMMENT '里程位置(m)',
+    Distance DOUBLE NOT NULL COMMENT '里程位置(m)',
     JsonString MEDIUMTEXT NOT NULL COMMENT '转发字符串',
     PRIMARY KEY (RecordID, Distance),
     FOREIGN KEY (RecordID) REFERENCES DetectRecord(RecordID)
