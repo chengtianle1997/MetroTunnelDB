@@ -15,3 +15,8 @@ ProcessDetectRecord函数接口更新
 
 V2.0.3
 修改DataConv表定义
+
+V3.0.0
+所有里程Distance类型从float升级为double
+同时删除了不必要的外键链接
+添加了TruncateTable.sql用于调试中对表格的初始化
